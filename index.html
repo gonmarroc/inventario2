@@ -20,7 +20,7 @@
     .card { background:var(--card); border:1px solid var(--b); border-radius:14px; padding:14px; box-shadow: 0 1px 0 rgba(0,0,0,.03); }
     h2 { font-size:16px; margin:0 0 10px; }
     label { font-size:12px; color:var(--muted); display:block; margin:8px 0 4px; }
-    input, select, button, textarea {
+    input, select, button {
       width:100%; box-sizing:border-box; padding:10px 10px; border-radius:10px; border:1px solid var(--b); background:#fff;
       font-size:14px;
     }
@@ -43,9 +43,8 @@
     th { font-size:12px; color:var(--muted); font-weight:600; }
     .topbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .topbar .actions { display:flex; gap:10px; flex-wrap:wrap; }
-    #reader { width:100%; }
-    .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#111; color:#fff; padding:10px 14px; border-radius:12px; display:none; z-index:10; }
     .hint { background:#fff; border:1px solid var(--b); border-radius:12px; padding:10px; color:var(--muted); font-size:13px; }
+    .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#111; color:#fff; padding:10px 14px; border-radius:12px; display:none; z-index:10; }
   </style>
 </head>
 
@@ -58,12 +57,8 @@
 
 <main>
   <div class="topbar">
-    <div class="pill">
-      <span>Productos:</span> <b id="countProducts">0</b>
-    </div>
-    <div class="pill">
-      <span>Stock total:</span> <b id="totalStock">0</b>
-    </div>
+    <div class="pill"><span>Productos:</span> <b id="countProducts">0</b></div>
+    <div class="pill"><span>Stock total:</span> <b id="totalStock">0</b></div>
 
     <div class="actions">
       <button class="secondary" id="btnExport">Exportar JSON</button>
@@ -122,8 +117,7 @@
       </div>
 
       <div class="hint" style="margin-top:10px">
-        Si la cámara no aparece: usa <b>HTTPS</b> o abre el archivo en un servidor local (ej: “Live Server” en VS Code).
-        En móvil, lo ideal es servirlo desde un hosting o un servidor local en la red.
+        Si la cámara no aparece: usa <b>HTTPS</b> o abre el archivo con un servidor local (ej: “Live Server” en VS Code).
       </div>
 
       <div style="margin-top:12px">
@@ -170,9 +164,7 @@
     <div style="overflow:auto">
       <table>
         <thead>
-        <tr>
-          <th>Fecha</th><th>SKU</th><th>Producto</th><th>Delta</th><th>Motivo</th>
-        </tr>
+          <tr><th>Fecha</th><th>SKU</th><th>Producto</th><th>Delta</th><th>Motivo</th></tr>
         </thead>
         <tbody id="movesBody"></tbody>
       </table>
@@ -181,39 +173,23 @@
 </main>
 
 <script>
-  // -----------------------------
-  // Persistencia (localStorage)
-  // -----------------------------
   const LS_KEY = "inventario_merch_v1";
+  const $ = (id) => document.getElementById(id);
 
   function loadState() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return { products: [], moves: [] };
       const parsed = JSON.parse(raw);
-      return {
-        products: Array.isArray(parsed.products) ? parsed.products : [],
-        moves: Array.isArray(parsed.moves) ? parsed.moves : []
-      };
-    } catch {
-      return { products: [], moves: [] };
-    }
+      return { products: parsed.products || [], moves: parsed.moves || [] };
+    } catch { return { products: [], moves: [] }; }
   }
 
-  function saveState() {
-    localStorage.setItem(LS_KEY, JSON.stringify(state));
-  }
+  function saveState() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 
   let state = loadState();
 
-  // -----------------------------
-  // Utilidades
-  // -----------------------------
-  const $ = (id) => document.getElementById(id);
-
-  function nowISO() {
-    return new Date().toISOString().replace("T", " ").slice(0, 19);
-  }
+  function nowISO() { return new Date().toISOString().replace("T", " ").slice(0, 19); }
 
   function toast(msg) {
     const t = $("toast");
@@ -225,8 +201,7 @@
 
   function normalizeSkuFromQr(text) {
     const s = String(text || "").trim();
-    if (s.toUpperCase().startsWith("SKU:")) return s.slice(4).trim();
-    return s;
+    return s.toUpperCase().startsWith("SKU:") ? s.slice(4).trim() : s;
   }
 
   function findBySku(sku) {
@@ -249,11 +224,14 @@
     return state.products.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
   }
 
-  // -----------------------------
-  // Render
-  // -----------------------------
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  // --- Render ---
   function render() {
-    // Stats
     $("countProducts").textContent = state.products.length;
     $("totalStock").textContent = totalStock();
 
@@ -279,16 +257,9 @@
         const qrWrap = document.createElement("div");
         qrWrap.className = "qrbox";
         const qrDiv = document.createElement("div");
-        qrDiv.style.width = "100px";
-        qrDiv.style.height = "100px";
         qrWrap.appendChild(qrDiv);
 
-        // Genera QR (texto recomendado)
-        new QRCode(qrDiv, {
-          text: `SKU:${p.sku}`,
-          width: 100,
-          height: 100
-        });
+        new QRCode(qrDiv, { text: `SKU:${p.sku}`, width: 100, height: 100 });
 
         const meta = document.createElement("div");
         meta.className = "meta";
@@ -323,7 +294,6 @@
         };
 
         actions.append(btnPrint, btnMinus, btnDelete);
-
         row.append(qrWrap, meta, actions);
         list.appendChild(row);
       }
@@ -351,36 +321,17 @@
     }
   }
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[c]));
-  }
-
-  // -----------------------------
-  // Acciones: crear, consumir, reponer
-  // -----------------------------
+  // --- Acciones ---
   function addProduct() {
     const name = $("pName").value.trim();
     const sku = $("pSku").value.trim();
     const stock = Math.max(0, Number($("pStock").value || 0));
-
     if (!name || !sku) return toast("Faltan nombre o SKU");
-
     if (findBySku(sku)) return toast("Ese SKU ya existe");
 
-    state.products.push({
-      id: crypto.randomUUID(),
-      name,
-      sku,
-      stock
-    });
-
+    state.products.push({ id: crypto.randomUUID(), name, sku, stock });
     saveState();
-    $("pName").value = "";
-    $("pSku").value = "";
-    $("pStock").value = 0;
-
+    $("pName").value = ""; $("pSku").value = ""; $("pStock").value = 0;
     toast("Producto creado");
     render();
   }
@@ -388,71 +339,67 @@
   function consumeSku(sku, qty, reason) {
     const product = findBySku(sku);
     if (!product) return toast("Producto no encontrado");
-
     const q = Math.max(1, Number(qty || 1));
-    if (product.stock < q) return toast(`Stock insuficiente (quedan ${product.stock})`);
-
+    if (product.stock < q) return toast(\`Stock insuficiente (quedan \${product.stock})\`);
     product.stock -= q;
     addMove(product, -q, reason || "entrega");
-
-    saveState();
-    render();
-    toast(`Descontado ${q} de ${product.sku}`);
+    saveState(); render();
+    toast(\`Descontado \${q} de \${product.sku}\`);
   }
 
   function restockSku(sku, qty) {
     const product = findBySku(sku);
     if (!product) return toast("Producto no encontrado");
-
     const q = Math.max(1, Number(qty || 1));
     product.stock += q;
     addMove(product, +q, "reposición");
-
-    saveState();
-    render();
-    toast(`Repuesto ${q} a ${product.sku}`);
+    saveState(); render();
+    toast(\`Repuesto \${q} a \${product.sku}\`);
   }
 
-  // -----------------------------
-  // Impresión de etiqueta QR
-  // -----------------------------
+  // --- Imprimir QR (sin meter scripts dentro) ---
   function printQrLabel(product) {
-    const w = window.open("", "_blank", "width=400,height=520");
-    const safeName = escapeHtml(product.name);
-    const safeSku = escapeHtml(product.sku);
+    // Sacamos una imagen (dataURL) del QR del producto
+    const temp = document.createElement("div");
+    temp.style.position = "fixed";
+    temp.style.left = "-9999px";
+    document.body.appendChild(temp);
 
+    temp.innerHTML = "";
+    new QRCode(temp, { text: `SKU:${product.sku}`, width: 220, height: 220 });
+
+    const img = temp.querySelector("img");
+    const dataUrl = img ? img.src : null;
+
+    document.body.removeChild(temp);
+
+    const w = window.open("", "_blank", "width=420,height=560");
     w.document.write(`
-      <html><head><title>QR ${safeSku}</title>
-      <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <!doctype html><html><head><meta charset="utf-8"/>
+      <meta name="viewport" content="width=device-width,initial-scale=1"/>
+      <title>QR ${escapeHtml(product.sku)}</title>
       <style>
         body{font-family:system-ui;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;}
         .card{border:1px solid #ddd;border-radius:14px;padding:18px;text-align:center;width:320px;}
         .name{font-weight:700;font-size:18px;margin-bottom:6px;}
         .sku{color:#555;margin-bottom:12px;}
-        #q{display:flex;justify-content:center;margin:10px 0;}
+        img{width:220px;height:220px}
         .hint{color:#777;font-size:12px;margin-top:10px;}
         @media print { .hint{display:none;} }
-      </style>
-      </head><body>
+      </style></head><body>
         <div class="card">
-          <div class="name">${safeName}</div>
-          <div class="sku">SKU: ${safeSku}</div>
-          <div id="q"></div>
+          <div class="name">${escapeHtml(product.name)}</div>
+          <div class="sku">SKU: ${escapeHtml(product.sku)}</div>
+          ${dataUrl ? `<img src="${dataUrl}" alt="QR"/>` : `<div>No se pudo generar el QR</div>`}
           <div class="hint">Consejo: imprime en etiquetas adhesivas.</div>
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-        <script>
-          new QRCode(document.getElementById("q"), { text: "SKU:${safeSku}", width: 220, height: 220 });
-          setTimeout(()=>window.print(), 400);
-        </script>
+        <script>setTimeout(()=>window.print(),300);</script>
       </body></html>
     `);
     w.document.close();
   }
 
-  // -----------------------------
-  // Escáner QR (cámara)
-  // -----------------------------
+  // --- Escáner ---
   let html5Qr = null;
   let scanning = false;
 
@@ -461,8 +408,6 @@
     scanning = true;
     $("btnStartScan").disabled = true;
     $("btnStopScan").disabled = false;
-
-    // Limpia el contenedor por si ya se renderizó antes
     $("reader").innerHTML = "";
 
     html5Qr = new Html5Qrcode("reader");
@@ -480,7 +425,6 @@
 
           $("lastScan").textContent = `Último escaneo: ${sku} (${nowISO()})`;
 
-          // Evitar doble lectura inmediata del mismo QR
           if (startScan._last === sku && Date.now() - (startScan._t || 0) < 1500) return;
           startScan._last = sku; startScan._t = Date.now();
 
@@ -500,10 +444,7 @@
 
   async function stopScan() {
     if (!html5Qr || !scanning) return;
-    try {
-      await html5Qr.stop();
-      await html5Qr.clear();
-    } catch {}
+    try { await html5Qr.stop(); await html5Qr.clear(); } catch {}
     html5Qr = null;
     scanning = false;
     $("btnStartScan").disabled = false;
@@ -512,9 +453,7 @@
     toast("Cámara parada");
   }
 
-  // -----------------------------
-  // Export / Import / Reset
-  // -----------------------------
+  // --- Export/Import/Reset ---
   function exportJSON() {
     const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -532,16 +471,13 @@
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result);
-        if (!parsed || typeof parsed !== "object") throw new Error("formato");
-        const products = Array.isArray(parsed.products) ? parsed.products : [];
-        const moves = Array.isArray(parsed.moves) ? parsed.moves : [];
-        state = { products, moves };
-        saveState();
-        render();
+        state = {
+          products: Array.isArray(parsed.products) ? parsed.products : [],
+          moves: Array.isArray(parsed.moves) ? parsed.moves : []
+        };
+        saveState(); render();
         toast("Importado correctamente");
-      } catch {
-        toast("JSON inválido");
-      }
+      } catch { toast("JSON inválido"); }
     };
     reader.readAsText(file);
   }
@@ -549,39 +485,30 @@
   function resetAll() {
     if (!confirm("¿Seguro que quieres borrar TODO el inventario de este navegador?")) return;
     state = { products: [], moves: [] };
-    saveState();
-    render();
+    saveState(); render();
     toast("Inventario borrado");
   }
 
-  // -----------------------------
-  // Eventos UI
-  // -----------------------------
+  // --- Eventos ---
   $("btnAdd").addEventListener("click", addProduct);
   $("search").addEventListener("input", render);
-
   $("btnStartScan").addEventListener("click", startScan);
   $("btnStopScan").addEventListener("click", stopScan);
-
   $("btnRestock").addEventListener("click", () => {
     const sku = $("restockSku").value.trim();
     const qty = Number($("restockQty").value || 1);
     if (!sku) return toast("Indica un SKU");
     restockSku(sku, qty);
   });
-
   $("btnExport").addEventListener("click", exportJSON);
-
   $("btnImport").addEventListener("click", () => $("fileImport").click());
   $("fileImport").addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) importJSON(file);
     e.target.value = "";
   });
-
   $("btnReset").addEventListener("click", resetAll);
 
-  // Render inicial
   render();
 </script>
 </body>
