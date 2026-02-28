@@ -3,234 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario Cuqui 💖</title>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <title>Inventario Fundación | Cloud</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
         :root {
-            --bg-color: #fff0f5; /* Rosa muy clarito */
+            --bg-color: #fcf8f8;
             --card-bg: #ffffff;
-            --primary: #ffb3c6; /* Rosa pastel */
-            --secondary: #a0c4ff; /* Azul pastel */
-            --text: #5a5a5a;
+            --primary: #f2a6b0; /* Rosa suave elegante */
+            --primary-hover: #e0929d;
+            --secondary: #9cb4d8; /* Azul suave */
+            --text-dark: #4a4a4a;
+            --text-light: #888888;
         }
 
         body {
-            font-family: 'Quicksand', sans-serif;
+            font-family: 'Nunito', sans-serif;
             background-color: var(--bg-color);
-            color: var(--text);
-            text-align: center;
+            color: var(--text-dark);
             margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 24px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.04);
         }
 
         h1 {
-            color: #ff99ac;
-            font-size: 2.5em;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+            color: var(--primary);
+            font-weight: 800;
+            margin-bottom: 5px;
         }
 
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background: var(--card-bg);
+        p.subtitle {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.9em;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            background: var(--bg-color);
             padding: 20px;
-            border-radius: 25px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            border-radius: 16px;
+            margin-bottom: 20px;
         }
 
-        button {
-            background-color: var(--primary);
-            border: none;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 20px;
-            font-family: 'Quicksand', sans-serif;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            margin: 5px;
-            transition: transform 0.2s;
-        }
-
-        button:hover {
-            transform: scale(1.05);
-        }
-
-        .btn-scan {
-            background-color: var(--secondary);
+        h3 {
+            margin-top: 0;
+            font-size: 1.1em;
+            color: var(--text-dark);
         }
 
         input {
-            padding: 10px;
-            border: 2px solid var(--primary);
-            border-radius: 15px;
-            font-family: 'Quicksand', sans-serif;
-            margin-bottom: 10px;
-            width: 80%;
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            font-family: 'Nunito', sans-serif;
+            margin-bottom: 12px;
+            font-size: 1em;
+            transition: border 0.3s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
             outline: none;
+        }
+
+        button {
+            width: 100%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+        }
+
+        button:hover { background-color: var(--primary-hover); }
+        button:active { transform: scale(0.98); }
+
+        .btn-scan {
+            background-color: var(--secondary);
+            margin-bottom: 10px;
+        }
+
+        #qr-result {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 15px;
         }
 
         .product-list {
             list-style: none;
             padding: 0;
-            margin-top: 20px;
+            margin: 0;
         }
 
         .product-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--bg-color);
-            margin-bottom: 10px;
-            padding: 15px;
-            border-radius: 15px;
-            font-weight: bold;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
         }
 
-        #reader {
-            width: 100%;
-            margin-top: 15px;
-            border-radius: 15px;
-            overflow: hidden;
+        .product-item:last-child { border-bottom: none; }
+        
+        .badge {
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 0.9em;
         }
 
-        #qr-result {
-            margin-top: 20px;
-            display: flex;
-            justify-content: center;
+        #reader { border-radius: 12px; overflow: hidden; }
+        
+        .status {
+            text-align: center;
+            font-size: 0.8em;
+            color: #4CAF50;
+            margin-bottom: 15px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>📦 Stock Cuqui 🧸</h1>
+    <div class="app-container">
+        <h1>Inventario</h1>
+        <p class="subtitle">Gestión de Merchandising ☁️</p>
         
-        <div id="add-section">
-            <h3>Añadir Nuevo Producto</h3>
-            <input type="text" id="prodName" placeholder="Ej: Taza Solidaria">
-            <input type="number" id="prodQty" placeholder="Cantidad" min="1">
-            <br>
-            <button onclick="addProduct()">➕ Añadir y Crear QR</button>
+        <div class="status" id="cloud-status">🟢 Conectado a la nube</div>
+
+        <div class="section">
+            <h3>1. Añadir Producto</h3>
+            <input type="text" id="prodName" placeholder="Nombre (Ej: Bolígrafo Solidario)">
+            <input type="number" id="prodQty" placeholder="Cantidad inicial" min="1">
+            <button onclick="addProduct()">Guardar y Generar QR</button>
+            <div id="qr-result"></div>
         </div>
 
-        <div id="qr-result"></div>
-
-        <hr style="border: 1px dashed #ffb3c6; margin: 20px 0;">
-
-        <div>
-            <h3>Escanear y Descontar 👇</h3>
-            <button class="btn-scan" onclick="startScanner()">📷 Abrir Cámara</button>
+        <div class="section">
+            <h3>2. Escáner de Salida</h3>
+            <button class="btn-scan" onclick="startScanner()">📷 Activar Cámara</button>
             <div id="reader"></div>
         </div>
 
-        <h3>Nuestro Inventario:</h3>
-        <ul class="product-list" id="inventoryList"></ul>
+        <div class="section">
+            <h3>Stock en Tiempo Real</h3>
+            <ul class="product-list" id="inventoryList">
+                </ul>
+        </div>
     </div>
 
     <script>
-        // Cargar inventario de la memoria o empezar vacío
-        let inventory = JSON.parse(localStorage.getItem('cuquiInventory')) || {};
-        const html5QrcodeScanner = new Html5Qrcode("reader");
+        // ==========================================
+        // ⚠️ ATENCIÓN: CONFIGURACIÓN DE TU BASE DE DATOS
+        // ==========================================
+        // Aquí debes pegar las claves de tu proyecto de Firebase
+        const firebaseConfig = {
+            apiKey: "PEGA_AQUI_TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            databaseURL: "https://TU_PROYECTO-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "PEGA_AQUI_TU_APP_ID"
+        };
 
-        // Mostrar inventario al cargar
-        updateUI();
+        // Inicializar Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        const inventoryRef = db.ref('inventario');
+
+        // Escuchar cambios en la nube en TIEMPO REAL
+        inventoryRef.on('value', (snapshot) => {
+            const data = snapshot.val() || {};
+            updateUI(data);
+        });
+
+        // ==========================================
+        // LÓGICA DE LA APLICACIÓN
+        // ==========================================
+        
+        const html5QrcodeScanner = new Html5Qrcode("reader");
 
         function addProduct() {
             const name = document.getElementById('prodName').value.trim();
             const qty = parseInt(document.getElementById('prodQty').value);
 
             if (!name || isNaN(qty) || qty <= 0) {
-                alert("Por favor, pon un nombre y una cantidad válida 🥺");
+                alert("Por favor, introduce datos válidos.");
                 return;
             }
 
-            // Crear un ID único basado en el nombre
             const id = "QR_" + name.replace(/\s+/g, '_').toUpperCase();
             
-            // Si el producto ya existe, sumamos
-            if(inventory[id]) {
-                inventory[id].qty += qty;
-            } else {
-                inventory[id] = { name: name, qty: qty };
-            }
+            // Actualizar o crear en la nube
+            inventoryRef.child(id).once('value', (snapshot) => {
+                const currentData = snapshot.val();
+                let newQty = qty;
+                if (currentData) {
+                    newQty += currentData.qty;
+                }
+                
+                inventoryRef.child(id).set({
+                    name: name,
+                    qty: newQty
+                });
 
-            saveData();
-            updateUI();
-            generateQR(id);
-            
-            document.getElementById('prodName').value = '';
-            document.getElementById('prodQty').value = '';
+                generateQR(id, name);
+                document.getElementById('prodName').value = '';
+                document.getElementById('prodQty').value = '';
+            });
         }
 
-        function generateQR(id) {
+        function generateQR(id, name) {
             const qrContainer = document.getElementById("qr-result");
-            qrContainer.innerHTML = ""; // Limpiar el anterior
+            qrContainer.innerHTML = ""; 
             
             new QRCode(qrContainer, {
                 text: id,
-                width: 128,
-                height: 128,
-                colorDark : "#ff99ac", // QR color rosa!
+                width: 150,
+                height: 150,
+                colorDark : "#4a4a4a",
                 colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
-            
-            const texto = document.createElement('p');
-            texto.innerText = "¡QR generado para " + inventory[id].name + "!";
-            qrContainer.appendChild(texto);
         }
 
         function startScanner() {
             html5QrcodeScanner.start(
-                { facingMode: "environment" }, // Usa la cámara trasera
+                { facingMode: "environment" },
                 { fps: 10, qrbox: { width: 250, height: 250 } },
-                (decodedText, decodedResult) => {
-                    // ¡QR Detectado!
-                    html5QrcodeScanner.stop(); // Apagamos cámara
+                (decodedText) => {
+                    html5QrcodeScanner.stop(); 
                     processScan(decodedText);
                 },
-                (errorMessage) => {
-                    // ignorar errores de frame a frame
-                }
-            ).catch((err) => {
-                alert("Error al abrir la cámara: " + err);
-            });
+                (errorMessage) => { /* ignorar */ }
+            ).catch((err) => alert("Error con la cámara: " + err));
         }
 
         function processScan(id) {
-            if (inventory[id]) {
-                if (inventory[id].qty > 0) {
-                    inventory[id].qty--;
-                    saveData();
-                    updateUI();
-                    alert("¡Bip! ✨ Descontado 1 x " + inventory[id].name + ". Quedan: " + inventory[id].qty);
+            inventoryRef.child(id).once('value', (snapshot) => {
+                const item = snapshot.val();
+                
+                if (item) {
+                    if (item.qty > 0) {
+                        // Restar 1 en la base de datos
+                        inventoryRef.child(id).update({ qty: item.qty - 1 });
+                        alert(`¡Escaneado! Se ha descontado 1x ${item.name}`);
+                    } else {
+                        alert(`Stock agotado de: ${item.name}`);
+                    }
                 } else {
-                    alert("¡Uy! 😰 Ya no quedan " + inventory[id].name + " en el stock.");
+                    alert("Código QR no reconocido en la base de datos.");
                 }
-            } else {
-                alert("Este código QR no está en nuestro inventario 🧐");
-            }
+            });
         }
 
-        function updateUI() {
+        function updateUI(data) {
             const list = document.getElementById('inventoryList');
             list.innerHTML = '';
             
-            for (let id in inventory) {
-                const item = inventory[id];
+            for (let id in data) {
+                const item = data[id];
                 const li = document.createElement('li');
                 li.className = 'product-item';
-                li.innerHTML = `<span>🎀 ${item.name}</span> <span>${item.qty} uds.</span>`;
+                li.innerHTML = `<span>${item.name}</span> <span class="badge">${item.qty}</span>`;
                 list.appendChild(li);
             }
-        }
-
-        function saveData() {
-            localStorage.setItem('cuquiInventory', JSON.stringify(inventory));
         }
     </script>
 </body>
