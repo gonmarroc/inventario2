@@ -1,515 +1,237 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Inventario Merch - Fundación</title>
-
-  <!-- Librerías por CDN -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-  <style>
-    :root { --b:#e8e8e8; --bg:#fafafa; --card:#fff; --txt:#111; --muted:#666; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:var(--bg); color:var(--txt); }
-    header { padding:16px; border-bottom:1px solid var(--b); background:#fff; position:sticky; top:0; z-index:5; }
-    header h1 { font-size:18px; margin:0; }
-    main { max-width:1100px; margin:0 auto; padding:16px; display:grid; gap:16px; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
-    @media (max-width: 900px){ .grid { grid-template-columns: 1fr; } }
-    .card { background:var(--card); border:1px solid var(--b); border-radius:14px; padding:14px; box-shadow: 0 1px 0 rgba(0,0,0,.03); }
-    h2 { font-size:16px; margin:0 0 10px; }
-    label { font-size:12px; color:var(--muted); display:block; margin:8px 0 4px; }
-    input, select, button {
-      width:100%; box-sizing:border-box; padding:10px 10px; border-radius:10px; border:1px solid var(--b); background:#fff;
-      font-size:14px;
-    }
-    button { cursor:pointer; background:#111; color:#fff; border:1px solid #111; }
-    button.secondary { background:#fff; color:#111; }
-    button.danger { background:#b00020; border-color:#b00020; }
-    .row { display:flex; gap:10px; align-items:center; }
-    .row > * { flex:1; }
-    .small { font-size:12px; color:var(--muted); }
-    .pill { display:inline-flex; gap:8px; align-items:center; border:1px solid var(--b); padding:6px 10px; border-radius:999px; background:#fff; }
-    .list { display:grid; gap:10px; }
-    .item { border:1px solid var(--b); border-radius:14px; padding:12px; display:flex; gap:12px; align-items:center; }
-    .qrbox { width:110px; height:110px; display:flex; align-items:center; justify-content:center; border:1px dashed var(--b); border-radius:12px; background:#fff; }
-    .meta { flex:1; }
-    .meta .name { font-weight:700; font-size:16px; }
-    .meta .sku { color:var(--muted); font-size:13px; margin-top:2px; }
-    .meta .stock { margin-top:8px; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { text-align:left; padding:8px; border-bottom:1px solid #f0f0f0; font-size:13px; }
-    th { font-size:12px; color:var(--muted); font-weight:600; }
-    .topbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-    .topbar .actions { display:flex; gap:10px; flex-wrap:wrap; }
-    .hint { background:#fff; border:1px solid var(--b); border-radius:12px; padding:10px; color:var(--muted); font-size:13px; }
-    .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#111; color:#fff; padding:10px 14px; border-radius:12px; display:none; z-index:10; }
-  </style>
-</head>
-
-<body>
-<header>
-  <h1>Inventario Merch - Fundación</h1>
-</header>
-
-<div class="toast" id="toast"></div>
-
-<main>
-  <div class="topbar">
-    <div class="pill"><span>Productos:</span> <b id="countProducts">0</b></div>
-    <div class="pill"><span>Stock total:</span> <b id="totalStock">0</b></div>
-
-    <div class="actions">
-      <button class="secondary" id="btnExport">Exportar JSON</button>
-      <button class="secondary" id="btnImport">Importar JSON</button>
-      <button class="danger" id="btnReset">Borrar todo</button>
-      <input type="file" id="fileImport" accept="application/json" style="display:none" />
-    </div>
-  </div>
-
-  <div class="grid">
-    <section class="card">
-      <h2>Alta de producto</h2>
-      <div class="row">
-        <div>
-          <label>Nombre</label>
-          <input id="pName" placeholder="Ej: Camiseta blanca" />
-        </div>
-        <div>
-          <label>SKU / Código</label>
-          <input id="pSku" placeholder="Ej: CAMI-BLA-001" />
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <label>Stock inicial</label>
-          <input id="pStock" type="number" min="0" value="0" />
-        </div>
-        <div>
-          <label>&nbsp;</label>
-          <button id="btnAdd">Crear producto</button>
-        </div>
-      </div>
-      <p class="small">El QR contendrá <b>SKU:TU-SKU</b>. Al escanear, se descuenta automáticamente.</p>
-    </section>
-
-    <section class="card">
-      <h2>Escanear QR y descontar</h2>
-      <div class="row">
-        <div>
-          <label>Cantidad</label>
-          <input id="scanQty" type="number" min="1" value="1" />
-        </div>
-        <div>
-          <label>Motivo</label>
-          <select id="scanReason">
-            <option value="entrega">Entrega</option>
-            <option value="venta">Venta</option>
-            <option value="uso_interno">Uso interno</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row">
-        <button id="btnStartScan">Iniciar cámara</button>
-        <button class="secondary" id="btnStopScan" disabled>Parar cámara</button>
-      </div>
-
-      <div class="hint" style="margin-top:10px">
-        Si la cámara no aparece: usa <b>HTTPS</b> o abre el archivo con un servidor local (ej: “Live Server” en VS Code).
-      </div>
-
-      <div style="margin-top:12px">
-        <div id="reader"></div>
-        <p class="small" id="lastScan">Último escaneo: —</p>
-      </div>
-
-      <hr style="border:none;border-top:1px solid var(--b); margin:14px 0" />
-
-      <h2>Reponer stock manual</h2>
-      <div class="row">
-        <div>
-          <label>SKU</label>
-          <input id="restockSku" placeholder="Ej: CAMI-BLA-001" />
-        </div>
-        <div>
-          <label>Cantidad</label>
-          <input id="restockQty" type="number" min="1" value="1" />
-        </div>
-      </div>
-      <div class="row">
-        <button class="secondary" id="btnRestock">Reponer</button>
-      </div>
-    </section>
-  </div>
-
-  <section class="card">
-    <div class="row" style="align-items:flex-end">
-      <div>
-        <h2>Productos (QR + stock)</h2>
-        <div class="small">Pulsa “Imprimir QR” para sacar etiquetas.</div>
-      </div>
-      <div>
-        <label>Buscar</label>
-        <input id="search" placeholder="Nombre o SKU..." />
-      </div>
-    </div>
-
-    <div class="list" id="productsList" style="margin-top:12px"></div>
-  </section>
-
-  <section class="card">
-    <h2>Movimientos (últimos 200)</h2>
-    <div style="overflow:auto">
-      <table>
-        <thead>
-          <tr><th>Fecha</th><th>SKU</th><th>Producto</th><th>Delta</th><th>Motivo</th></tr>
-        </thead>
-        <tbody id="movesBody"></tbody>
-      </table>
-    </div>
-  </section>
-</main>
-
-<script>
-  const LS_KEY = "inventario_merch_v1";
-  const $ = (id) => document.getElementById(id);
-
-  function loadState() {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return { products: [], moves: [] };
-      const parsed = JSON.parse(raw);
-      return { products: parsed.products || [], moves: parsed.moves || [] };
-    } catch { return { products: [], moves: [] }; }
-  }
-
-  function saveState() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-
-  let state = loadState();
-
-  function nowISO() { return new Date().toISOString().replace("T", " ").slice(0, 19); }
-
-  function toast(msg) {
-    const t = $("toast");
-    t.textContent = msg;
-    t.style.display = "block";
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => t.style.display = "none", 2200);
-  }
-
-  function normalizeSkuFromQr(text) {
-    const s = String(text || "").trim();
-    return s.toUpperCase().startsWith("SKU:") ? s.slice(4).trim() : s;
-  }
-
-  function findBySku(sku) {
-    return state.products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
-  }
-
-  function addMove(product, delta, reason) {
-    state.moves.unshift({
-      id: crypto.randomUUID(),
-      at: nowISO(),
-      sku: product.sku,
-      name: product.name,
-      delta,
-      reason
-    });
-    state.moves = state.moves.slice(0, 200);
-  }
-
-  function totalStock() {
-    return state.products.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
-  }
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-    }[c]));
-  }
-
-  // --- Render ---
-  function render() {
-    $("countProducts").textContent = state.products.length;
-    $("totalStock").textContent = totalStock();
-
-    // Productos
-    const q = $("search").value.trim().toLowerCase();
-    const list = $("productsList");
-    list.innerHTML = "";
-
-    const filtered = state.products
-      .filter(p => !q || p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q))
-      .sort((a,b) => a.name.localeCompare(b.name, "es"));
-
-    if (filtered.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "small";
-      empty.textContent = "No hay productos (o no coincide la búsqueda).";
-      list.appendChild(empty);
-    } else {
-      for (const p of filtered) {
-        const row = document.createElement("div");
-        row.className = "item";
-
-        const qrWrap = document.createElement("div");
-        qrWrap.className = "qrbox";
-        const qrDiv = document.createElement("div");
-        qrWrap.appendChild(qrDiv);
-
-        new QRCode(qrDiv, { text: `SKU:${p.sku}`, width: 100, height: 100 });
-
-        const meta = document.createElement("div");
-        meta.className = "meta";
-        meta.innerHTML = `
-          <div class="name">${escapeHtml(p.name)}</div>
-          <div class="sku">SKU: ${escapeHtml(p.sku)}</div>
-          <div class="stock"><b>Stock:</b> ${p.stock}</div>
-        `;
-
-        const actions = document.createElement("div");
-        actions.style.display = "grid";
-        actions.style.gap = "8px";
-        actions.style.width = "160px";
-
-        const btnPrint = document.createElement("button");
-        btnPrint.className = "secondary";
-        btnPrint.textContent = "Imprimir QR";
-        btnPrint.onclick = () => printQrLabel(p);
-
-        const btnMinus = document.createElement("button");
-        btnMinus.textContent = "Descontar 1";
-        btnMinus.onclick = () => consumeSku(p.sku, 1, "entrega");
-
-        const btnDelete = document.createElement("button");
-        btnDelete.className = "danger";
-        btnDelete.textContent = "Eliminar";
-        btnDelete.onclick = () => {
-          if (!confirm(`¿Eliminar "${p.name}" (SKU ${p.sku})?`)) return;
-          state.products = state.products.filter(x => x.sku !== p.sku);
-          saveState(); render();
-          toast("Producto eliminado");
-        };
-
-        actions.append(btnPrint, btnMinus, btnDelete);
-        row.append(qrWrap, meta, actions);
-        list.appendChild(row);
-      }
-    }
-
-    // Movimientos
-    const body = $("movesBody");
-    body.innerHTML = "";
-    if (state.moves.length === 0) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td colspan="5" class="small">Sin movimientos todavía.</td>`;
-      body.appendChild(tr);
-    } else {
-      for (const m of state.moves) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${escapeHtml(m.at)}</td>
-          <td>${escapeHtml(m.sku)}</td>
-          <td>${escapeHtml(m.name)}</td>
-          <td>${m.delta}</td>
-          <td>${escapeHtml(m.reason)}</td>
-        `;
-        body.appendChild(tr);
-      }
-    }
-  }
-
-  // --- Acciones ---
-  function addProduct() {
-    const name = $("pName").value.trim();
-    const sku = $("pSku").value.trim();
-    const stock = Math.max(0, Number($("pStock").value || 0));
-    if (!name || !sku) return toast("Faltan nombre o SKU");
-    if (findBySku(sku)) return toast("Ese SKU ya existe");
-
-    state.products.push({ id: crypto.randomUUID(), name, sku, stock });
-    saveState();
-    $("pName").value = ""; $("pSku").value = ""; $("pStock").value = 0;
-    toast("Producto creado");
-    render();
-  }
-
-  function consumeSku(sku, qty, reason) {
-    const product = findBySku(sku);
-    if (!product) return toast("Producto no encontrado");
-    const q = Math.max(1, Number(qty || 1));
-    if (product.stock < q) return toast(\`Stock insuficiente (quedan \${product.stock})\`);
-    product.stock -= q;
-    addMove(product, -q, reason || "entrega");
-    saveState(); render();
-    toast(\`Descontado \${q} de \${product.sku}\`);
-  }
-
-  function restockSku(sku, qty) {
-    const product = findBySku(sku);
-    if (!product) return toast("Producto no encontrado");
-    const q = Math.max(1, Number(qty || 1));
-    product.stock += q;
-    addMove(product, +q, "reposición");
-    saveState(); render();
-    toast(\`Repuesto \${q} a \${product.sku}\`);
-  }
-
-  // --- Imprimir QR (sin meter scripts dentro) ---
-  function printQrLabel(product) {
-    // Sacamos una imagen (dataURL) del QR del producto
-    const temp = document.createElement("div");
-    temp.style.position = "fixed";
-    temp.style.left = "-9999px";
-    document.body.appendChild(temp);
-
-    temp.innerHTML = "";
-    new QRCode(temp, { text: `SKU:${product.sku}`, width: 220, height: 220 });
-
-    const img = temp.querySelector("img");
-    const dataUrl = img ? img.src : null;
-
-    document.body.removeChild(temp);
-
-    const w = window.open("", "_blank", "width=420,height=560");
-    w.document.write(`
-      <!doctype html><html><head><meta charset="utf-8"/>
-      <meta name="viewport" content="width=device-width,initial-scale=1"/>
-      <title>QR ${escapeHtml(product.sku)}</title>
-      <style>
-        body{font-family:system-ui;margin:0;display:flex;align-items:center;justify-content:center;height:100vh;}
-        .card{border:1px solid #ddd;border-radius:14px;padding:18px;text-align:center;width:320px;}
-        .name{font-weight:700;font-size:18px;margin-bottom:6px;}
-        .sku{color:#555;margin-bottom:12px;}
-        img{width:220px;height:220px}
-        .hint{color:#777;font-size:12px;margin-top:10px;}
-        @media print { .hint{display:none;} }
-      </style></head><body>
-        <div class="card">
-          <div class="name">${escapeHtml(product.name)}</div>
-          <div class="sku">SKU: ${escapeHtml(product.sku)}</div>
-          ${dataUrl ? `<img src="${dataUrl}" alt="QR"/>` : `<div>No se pudo generar el QR</div>`}
-          <div class="hint">Consejo: imprime en etiquetas adhesivas.</div>
-        </div>
-        <script>setTimeout(()=>window.print(),300);</script>
-      </body></html>
-    `);
-    w.document.close();
-  }
-
-  // --- Escáner ---
-  let html5Qr = null;
-  let scanning = false;
-
-  async function startScan() {
-    if (scanning) return;
-    scanning = true;
-    $("btnStartScan").disabled = true;
-    $("btnStopScan").disabled = false;
-    $("reader").innerHTML = "";
-
-    html5Qr = new Html5Qrcode("reader");
-    try {
-      const devices = await Html5Qrcode.getCameras();
-      const camId = devices?.[0]?.id;
-
-      await html5Qr.start(
-        camId || { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          const sku = normalizeSkuFromQr(decodedText);
-          const qty = Number($("scanQty").value || 1);
-          const reason = $("scanReason").value;
-
-          $("lastScan").textContent = `Último escaneo: ${sku} (${nowISO()})`;
-
-          if (startScan._last === sku && Date.now() - (startScan._t || 0) < 1500) return;
-          startScan._last = sku; startScan._t = Date.now();
-
-          consumeSku(sku, qty, reason);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Cuqui 💖</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #fff0f5; /* Rosa muy clarito */
+            --card-bg: #ffffff;
+            --primary: #ffb3c6; /* Rosa pastel */
+            --secondary: #a0c4ff; /* Azul pastel */
+            --text: #5a5a5a;
         }
-      );
 
-      toast("Cámara iniciada");
-    } catch (e) {
-      console.error(e);
-      toast("No se pudo iniciar la cámara");
-      $("btnStartScan").disabled = false;
-      $("btnStopScan").disabled = true;
-      scanning = false;
-    }
-  }
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
 
-  async function stopScan() {
-    if (!html5Qr || !scanning) return;
-    try { await html5Qr.stop(); await html5Qr.clear(); } catch {}
-    html5Qr = null;
-    scanning = false;
-    $("btnStartScan").disabled = false;
-    $("btnStopScan").disabled = true;
-    $("reader").innerHTML = "";
-    toast("Cámara parada");
-  }
+        h1 {
+            color: #ff99ac;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.05);
+        }
 
-  // --- Export/Import/Reset ---
-  function exportJSON() {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `inventario-merch-${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 25px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        }
 
-  function importJSON(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        state = {
-          products: Array.isArray(parsed.products) ? parsed.products : [],
-          moves: Array.isArray(parsed.moves) ? parsed.moves : []
-        };
-        saveState(); render();
-        toast("Importado correctamente");
-      } catch { toast("JSON inválido"); }
-    };
-    reader.readAsText(file);
-  }
+        button {
+            background-color: var(--primary);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
 
-  function resetAll() {
-    if (!confirm("¿Seguro que quieres borrar TODO el inventario de este navegador?")) return;
-    state = { products: [], moves: [] };
-    saveState(); render();
-    toast("Inventario borrado");
-  }
+        button:hover {
+            transform: scale(1.05);
+        }
 
-  // --- Eventos ---
-  $("btnAdd").addEventListener("click", addProduct);
-  $("search").addEventListener("input", render);
-  $("btnStartScan").addEventListener("click", startScan);
-  $("btnStopScan").addEventListener("click", stopScan);
-  $("btnRestock").addEventListener("click", () => {
-    const sku = $("restockSku").value.trim();
-    const qty = Number($("restockQty").value || 1);
-    if (!sku) return toast("Indica un SKU");
-    restockSku(sku, qty);
-  });
-  $("btnExport").addEventListener("click", exportJSON);
-  $("btnImport").addEventListener("click", () => $("fileImport").click());
-  $("fileImport").addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (file) importJSON(file);
-    e.target.value = "";
-  });
-  $("btnReset").addEventListener("click", resetAll);
+        .btn-scan {
+            background-color: var(--secondary);
+        }
 
-  render();
-</script>
+        input {
+            padding: 10px;
+            border: 2px solid var(--primary);
+            border-radius: 15px;
+            font-family: 'Quicksand', sans-serif;
+            margin-bottom: 10px;
+            width: 80%;
+            outline: none;
+        }
+
+        .product-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-color);
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+
+        #reader {
+            width: 100%;
+            margin-top: 15px;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        #qr-result {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>📦 Stock Cuqui 🧸</h1>
+        
+        <div id="add-section">
+            <h3>Añadir Nuevo Producto</h3>
+            <input type="text" id="prodName" placeholder="Ej: Taza Solidaria">
+            <input type="number" id="prodQty" placeholder="Cantidad" min="1">
+            <br>
+            <button onclick="addProduct()">➕ Añadir y Crear QR</button>
+        </div>
+
+        <div id="qr-result"></div>
+
+        <hr style="border: 1px dashed #ffb3c6; margin: 20px 0;">
+
+        <div>
+            <h3>Escanear y Descontar 👇</h3>
+            <button class="btn-scan" onclick="startScanner()">📷 Abrir Cámara</button>
+            <div id="reader"></div>
+        </div>
+
+        <h3>Nuestro Inventario:</h3>
+        <ul class="product-list" id="inventoryList"></ul>
+    </div>
+
+    <script>
+        // Cargar inventario de la memoria o empezar vacío
+        let inventory = JSON.parse(localStorage.getItem('cuquiInventory')) || {};
+        const html5QrcodeScanner = new Html5Qrcode("reader");
+
+        // Mostrar inventario al cargar
+        updateUI();
+
+        function addProduct() {
+            const name = document.getElementById('prodName').value.trim();
+            const qty = parseInt(document.getElementById('prodQty').value);
+
+            if (!name || isNaN(qty) || qty <= 0) {
+                alert("Por favor, pon un nombre y una cantidad válida 🥺");
+                return;
+            }
+
+            // Crear un ID único basado en el nombre
+            const id = "QR_" + name.replace(/\s+/g, '_').toUpperCase();
+            
+            // Si el producto ya existe, sumamos
+            if(inventory[id]) {
+                inventory[id].qty += qty;
+            } else {
+                inventory[id] = { name: name, qty: qty };
+            }
+
+            saveData();
+            updateUI();
+            generateQR(id);
+            
+            document.getElementById('prodName').value = '';
+            document.getElementById('prodQty').value = '';
+        }
+
+        function generateQR(id) {
+            const qrContainer = document.getElementById("qr-result");
+            qrContainer.innerHTML = ""; // Limpiar el anterior
+            
+            new QRCode(qrContainer, {
+                text: id,
+                width: 128,
+                height: 128,
+                colorDark : "#ff99ac", // QR color rosa!
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+            
+            const texto = document.createElement('p');
+            texto.innerText = "¡QR generado para " + inventory[id].name + "!";
+            qrContainer.appendChild(texto);
+        }
+
+        function startScanner() {
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, // Usa la cámara trasera
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    // ¡QR Detectado!
+                    html5QrcodeScanner.stop(); // Apagamos cámara
+                    processScan(decodedText);
+                },
+                (errorMessage) => {
+                    // ignorar errores de frame a frame
+                }
+            ).catch((err) => {
+                alert("Error al abrir la cámara: " + err);
+            });
+        }
+
+        function processScan(id) {
+            if (inventory[id]) {
+                if (inventory[id].qty > 0) {
+                    inventory[id].qty--;
+                    saveData();
+                    updateUI();
+                    alert("¡Bip! ✨ Descontado 1 x " + inventory[id].name + ". Quedan: " + inventory[id].qty);
+                } else {
+                    alert("¡Uy! 😰 Ya no quedan " + inventory[id].name + " en el stock.");
+                }
+            } else {
+                alert("Este código QR no está en nuestro inventario 🧐");
+            }
+        }
+
+        function updateUI() {
+            const list = document.getElementById('inventoryList');
+            list.innerHTML = '';
+            
+            for (let id in inventory) {
+                const item = inventory[id];
+                const li = document.createElement('li');
+                li.className = 'product-item';
+                li.innerHTML = `<span>🎀 ${item.name}</span> <span>${item.qty} uds.</span>`;
+                list.appendChild(li);
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('cuquiInventory', JSON.stringify(inventory));
+        }
+    </script>
 </body>
 </html>
